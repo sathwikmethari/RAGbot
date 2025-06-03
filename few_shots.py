@@ -187,6 +187,6 @@ group by t_shirt_id) a left join discounts on a.t_shirt_id = discounts.t_shirt_i
                       ORDER BY stock_value DESC 
                       LIMIT 5""",
         'SQLResult': "Result of the SQL query",
-        'Answer': "1. Nike - $35,450, 2. Adidas - $30,200, 3. Puma - $28,900, 4. Levi's - $25,300, 5. Under Armour - $22,750"
+        'Answer': "1. Levi - $28228, 2. Nike - $22,855, 3. Van Huesen - $19708, 4. Adidas - $18619."
     }
 ]
