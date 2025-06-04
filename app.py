@@ -80,30 +80,31 @@ example_prompt = PromptTemplate(
     template="\nQuestion: {Question}\nSQLQuery: {SQLQuery}\nSQLResult: {SQLResult}\nAnswer: {Answer}",
     )
 
-# few_shot_prompt = FewShotPromptTemplate(
-#     example_selector=example_selector,
-#     example_prompt=example_prompt,
-#     prefix=mysql_prompt,
-#     suffix=PROMPT_SUFFIX,
-#     input_variables=["Question", "SQLQuery", "SQLResult", "Answer"], #These variables are used in the prefix and suffix
-#     )
-# memory = ConversationBufferWindowMemory(k=10, return_messages=True)
-# chatbot = SQLDatabaseChain.from_llm(llm, db, memory=memory, verbose=True, prompt=few_shot_prompt)
+few_shot_prompt = FewShotPromptTemplate(
+    example_selector=example_selector,
+    example_prompt=example_prompt,
+    prefix=mysql_prompt,
+    suffix=PROMPT_SUFFIX,
+    input_variables=["Question", "SQLQuery", "SQLResult", "Answer"], #These variables are used in the prefix and suffix
+    )
+memory = ConversationBufferWindowMemory(k=10, return_messages=True)
 
-# #def clean_sql_query(query):
-#     #return query.replace("```sql", "").replace("```", "").strip()
+def clean_sql_query(query):
+    return query.replace("```sql", "").replace("```", "").strip()
 
 # Use your vector store
 retriever = vectorstore.as_retriever()
 
-llm = ChatCohere(model="command-r-plus")  # or any supported model
+llm = ChatCohere(model="command-a-03-2025")  # or any supported model
 
 
-chatbot = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    chain_type="stuff",  
-)
+# chatbot = RetrievalQA.from_chain_type(
+#     llm=llm,
+#     retriever=retriever,
+#     chain_type="stuff",  
+# )
+
+chatbot = SQLDatabaseChain.from_llm(llm, db, memory=memory, verbose=True, prompt=few_shot_prompt)
 
 st.title("RAG Chatbot")
 input_text=st.text_input("What question do you have in mind?")
@@ -111,6 +112,6 @@ input_text=st.text_input("What question do you have in mind?")
 if input_text:
     container = st.container(border=True)
     try:
-        container.write(chatbot.invoke(input_text)['result'])
+        container.write(chatbot.invoke(input_text))
     except:
         container.write("Sorry, I am not able to answer this question.")
