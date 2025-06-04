@@ -58,11 +58,12 @@ example_selector = SemanticSimilarityExampleSelector(
     vectorstore=vectorstore,
     k=5,
 )
-# mysql_prompt = """You are a MySQL expert. Given an input question, first create a syntactically correct MySQL query to run, then look at the results of the query and return the answer to the input question.
-# Unless the user specifies in the question a specific number of examples to obtain, query for at most {top_k} results using the LIMIT clause as per MySQL. You can order the results to return the most informative data in the database.
-# Never query for all columns from a table. You must query only the columns that are needed to answer the question. Wrap each column name in backticks (`) to denote them as delimited identifiers.
-# Pay attention to use only the column names you can see in the tables below. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
-# Pay attention to use CURDATE() function to get the current date, if the question involves "today".
+
+mysql_prompt = """You are a MySQL expert and T-shirt inventory manager. Given an input question, first create a syntactically correct MySQL query to run, then look at the results of the query and return the answer to the input question.
+Unless the user specifies in the question a specific number of examples to obtain, query for at most {top_k} results using the LIMIT clause as per MySQL. You can order the results to return the most informative data in the database.
+Never query for all columns from a table. You must query only the columns that are needed to answer the question. Wrap each column name in backticks (`) to denote them as delimited identifiers.
+Pay attention to use only the column names you see in the tables, Only query for columns that exist. Also, pay close attention to which column is in which table.
+use CURDATE() function to get the current date, if the question involves "today".
     
 # Use the following format:
     
@@ -74,10 +75,10 @@ example_selector = SemanticSimilarityExampleSelector(
 # No pre-amble.
 # """
 
-# example_prompt = PromptTemplate(
-#     input_variables=["Question", "SQLQuery", "SQLResult","Answer",],
-#     template="\nQuestion: {Question}\nSQLQuery: {SQLQuery}\nSQLResult: {SQLResult}\nAnswer: {Answer}",
-#     )
+example_prompt = PromptTemplate(
+    input_variables=["Question", "SQLQuery", "SQLResult","Answer",],
+    template="\nQuestion: {Question}\nSQLQuery: {SQLQuery}\nSQLResult: {SQLResult}\nAnswer: {Answer}",
+    )
 
 # few_shot_prompt = FewShotPromptTemplate(
 #     example_selector=example_selector,
@@ -86,7 +87,7 @@ example_selector = SemanticSimilarityExampleSelector(
 #     suffix=PROMPT_SUFFIX,
 #     input_variables=["Question", "SQLQuery", "SQLResult", "Answer"], #These variables are used in the prefix and suffix
 #     )
-# memory = ConversationBufferWindowMemory(k=5, return_messages=True)
+# memory = ConversationBufferWindowMemory(k=10, return_messages=True)
 # chatbot = SQLDatabaseChain.from_llm(llm, db, memory=memory, verbose=True, prompt=few_shot_prompt)
 
 # #def clean_sql_query(query):
