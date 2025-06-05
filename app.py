@@ -1,4 +1,6 @@
 import os
+from utils import *
+from few_shots import few_shots_list_of_dict  #Importing the few_shots_list_of_dict from few_shots.py file
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables from .env
 
@@ -17,7 +19,6 @@ from langchain.prompts.prompt import PromptTemplate
 from langchain.memory import ConversationBufferWindowMemory #for memory
 from langchain.chains import RetrievalQA
 from langchain_core.callbacks import Callbacks
-from few_shots import few_shots_list_of_dict  #Importing the few_shots_list_of_dict from few_shots.py file
 import warnings
 warnings.filterwarnings("ignore")
 

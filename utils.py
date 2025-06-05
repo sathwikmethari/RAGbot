@@ -1,4 +1,6 @@
-import os, pymysql
+import os, pymysql, smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables from.env
 
@@ -7,23 +9,16 @@ db_password = os.getenv("PASSWORD")
 db_host = os.getenv("HOST")
 db_name = os.getenv("NAME")
 
-connection = pymysql.connect(host=db_host,
-                             user=db_user,
-                             password=db_password,
-                             database=db_name,
-                             cursorclass=pymysql.cursors.DictCursor)
-
-with connection:
-    with connection.cursor() as cursor:
-        # Create a new record
-        sql = "SELECT brand FROM t_shirts limit 3"
-        cursor.execute(sql)
-        result =cursor.fetchall()
-        print(result)
-    # connection is not autocommit by default. So you must commit to save
-    # your changes.
-    connection.commit()
-
+def html_template() -> str:
+    text="""
+        <html>
+        <body>
+            <h2 style="color:blue;">Hello!</h2>
+            <p>This is an <strong>HTML-formatted</strong> email.</p>
+        </body>
+        </html>
+        """
+    return text
 
 def update_stock(host, user, password, name) -> None:
     while True:
@@ -67,4 +62,25 @@ def update_stock(host, user, password, name) -> None:
     #     sql = "UPDATE t_shirts SET stock_quantity = {stock_amount} WHERE brand = {brand} AND size = {size} AND color ={color}"
     #     cursor.execute(sql)
     #     connection.commit()
-update_stock(host=db_host,user=db_user,password=db_password, name=db_name)
+#update_stock(host=db_host,user=db_user,password=db_password, name=db_name)
+
+def email_sender(sender_email, sender_password) -> None:
+    smtp = smtplib.SMTP('smtp.gmail.com', 587)
+    smtp.ehlo()
+    smtp.starttls()
+    smtp.login(sender_email, sender_password)
+    msg = MIMEMultipart()
+    brand, color, size= "adidas", "BLACK", "S"
+    # Add Subject
+    msg['Subject'] = "Restock Alert"
+    text = html_template()
+    msg.attach(MIMEText(text, "html", "utf-8"))
+    to=['sathwikmethari@gmail.com']
+    smtp.sendmail(sender_email, to, msg.as_string())
+    smtp.quit()
+    print("Email sent successfully.")
+
+if __name__ == "__main__":
+    email_sender(sender_email=os.getenv("SENDER_EMAIL"), sender_password=os.getenv("SENDER_PASSWORD"))
+    
+
