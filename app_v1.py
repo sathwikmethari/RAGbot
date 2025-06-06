@@ -1,6 +1,6 @@
 import os
 from utils import *
-from few_shots import few_shots_list_of_dict
+from few_shots.few_shots_v1 import few_shots_list_of_dict
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables from .env 
 from langchain.prompts import FewShotPromptTemplate, PromptTemplate
@@ -81,11 +81,9 @@ few_shot_prompt = FewShotPromptTemplate(
 
 memory = ConversationBufferWindowMemory(k=10, return_messages=True)
 
-# ✅ Function to clean LLM SQL outputs
 def clean_sql_query(query):
     return query.replace("```sql", "").replace("```", "").strip()
 
-# ✅ Patch database run method to clean query before execution
 def clean_and_run(self, query: str):
     cleaned_query = clean_sql_query(query)
     return self._execute(cleaned_query)
@@ -111,9 +109,10 @@ input_text=st.text_input("What question do you have in mind?")
 if input_text:
     container = st.container(border=True)
     try:
+        #chatbot.database is an instance of LangChain's SQLDatabase, which is responsible for executing the SQL query.
+        #You are overriding this .run() method with your own version (clean_and_run), 
+        #and using MethodType to bind it properly to the chatbot.database 
         chatbot.database.run = MethodType(clean_and_run, chatbot.database)
-
-# 🚀 Run chatbot
         response = chatbot.run(input_text)
         container.write(response)
     except:
