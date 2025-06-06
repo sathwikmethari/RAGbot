@@ -72,7 +72,7 @@ def email_sender(sender_email, sender_password) -> None:
     msg = MIMEMultipart()
     brand, color, size= "adidas", "BLACK", "S"
     # Add Subject
-    msg['Subject'] = "Restock Alert"
+    msg['Subject'] = "Restock Alert!"
     text = html_template()
     msg.attach(MIMEText(text, "html", "utf-8"))
     to=['sathwikmethari@gmail.com']

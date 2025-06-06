@@ -1,24 +1,22 @@
 import os
 from utils import *
-from few_shots import few_shots_list_of_dict  #Importing the few_shots_list_of_dict from few_shots.py file
+from few_shots import few_shots_list_of_dict
 from dotenv import load_dotenv
-load_dotenv()  # take environment variables from .env
-
-import streamlit as st
-from pydantic import BaseModel
-from langchain_cohere import ChatCohere
-from langchain_community.retrievers import CohereRagRetriever
-from langchain_community.utilities import SQLDatabase
-from langchain_community.vectorstores import Chroma
+load_dotenv()  # take environment variables from .env 
+from langchain.prompts import FewShotPromptTemplate, PromptTemplate
+from langchain.memory import ConversationBufferWindowMemory
 from langchain_experimental.sql import SQLDatabaseChain
 from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
-from langchain_huggingface import HuggingFaceEmbeddings  
-from langchain.prompts import FewShotPromptTemplate
-from langchain.chains.sql_database.prompt import PROMPT_SUFFIX, _mysql_prompt
-from langchain.prompts.prompt import PromptTemplate
-from langchain.memory import ConversationBufferWindowMemory #for memory
-from langchain.chains import RetrievalQA
-from langchain_core.callbacks import Callbacks
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma 
+from langchain_community.utilities.sql_database import SQLDatabase
+from langchain.chains.sql_database.prompt import PROMPT_SUFFIX
+from langchain_cohere import ChatCohere
+import streamlit as st
+from types import MethodType
+
+# class BaseCache(BaseModel):
+#     pass
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -31,12 +29,6 @@ os.environ["COHERE_API_KEY"]=os.getenv("COHERE_API_KEY") # Set the cohere api ke
 os.environ["LANGCHAIN_TRACING_V2"]="true"                # Enable tracing
 os.environ["LANGCHAIN_PROJECT"]=os.getenv("LANGCHAIN_PROJECT") # Set the project name
 
-rag = CohereRagRetriever(llm=ChatCohere())
-
-# class BaseCache(BaseModel):
-#     pass
-
-
 SQLDatabaseChain.model_rebuild()  # Rebuild the model before usage
 
 try:
@@ -44,9 +36,6 @@ try:
     print("Successfully connected to the database!")
 except:
     print("Failed to connect to the database. Please check your credentials.")
-
-
-# # Load sentence-transformers model for embedding
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
 to_vectorize = [" ".join(example.values()) for example in few_shots_list_of_dict]
@@ -59,53 +48,62 @@ example_selector = SemanticSimilarityExampleSelector(
     vectorstore=vectorstore,
     k=5,
 )
-
+# Your existing MySQL prompt
 mysql_prompt = """You are a MySQL expert and T-shirt inventory manager. Given an input question, first create a syntactically correct MySQL query to run, then look at the results of the query and return the answer to the input question.
 Unless the user specifies in the question a specific number of examples to obtain, query for at most {top_k} results using the LIMIT clause as per MySQL. You can order the results to return the most informative data in the database.
 Never query for all columns from a table. You must query only the columns that are needed to answer the question. Wrap each column name in backticks (`) to denote them as delimited identifiers.
 Pay attention to use only the column names you see in the tables, Only query for columns that exist. Also, pay close attention to which column is in which table.
-use CURDATE() function to get the current date, if the question involves "today".
-    
+Use CURDATE() function to get the current date, if the question involves "today".
+NEVER wrap the SQL query in markdown backticks or any formatting like ```sql, If SQLResult is [] return Answer as None 
+
 # Use the following format:
-    
+
 # Question: Question here
 # SQLQuery: Query to run with no pre-amble
-# SQLResult: Result of the SQLQuery
+# SQLResult: Result of the SQLQuery 
 # Answer: Final answer here
-    
+
 # No pre-amble.
 # """
 
 example_prompt = PromptTemplate(
-    input_variables=["Question", "SQLQuery", "SQLResult","Answer",],
+    input_variables=["Question", "SQLQuery", "SQLResult", "Answer"],
     template="\nQuestion: {Question}\nSQLQuery: {SQLQuery}\nSQLResult: {SQLResult}\nAnswer: {Answer}",
-    )
+)
 
 few_shot_prompt = FewShotPromptTemplate(
-    example_selector=example_selector,
+    example_selector=example_selector,  # assumed defined earlier
     example_prompt=example_prompt,
     prefix=mysql_prompt,
-    suffix=PROMPT_SUFFIX,
-    input_variables=["Question", "SQLQuery", "SQLResult", "Answer"], #These variables are used in the prefix and suffix
-    )
+    suffix=PROMPT_SUFFIX,  # assumed defined earlier
+    input_variables=["Question", "SQLQuery", "SQLResult", "Answer"],
+)
+
 memory = ConversationBufferWindowMemory(k=10, return_messages=True)
 
+# ✅ Function to clean LLM SQL outputs
 def clean_sql_query(query):
     return query.replace("```sql", "").replace("```", "").strip()
 
-# Use your vector store
-retriever = vectorstore.as_retriever()
+# ✅ Patch database run method to clean query before execution
+def clean_and_run(self, query: str):
+    cleaned_query = clean_sql_query(query)
+    return self._execute(cleaned_query)
 
-llm = ChatCohere(model="command-a-03-2025")  # or any supported model
+# LLM and SQL chain setup
+llm = ChatCohere(model="command-a-03-2025")  # your model
+#retriever = vectorstore.as_retriever()       # your vector store (already assumed ready)
+# db = SQLDatabase(...)                      # assumed created somewhere above
 
+chatbot = SQLDatabaseChain.from_llm(
+    llm=llm,
+    db=db,
+    memory=memory,
+    verbose=True,
+    prompt=few_shot_prompt,
+    use_query_checker=True
+)
 
-# chatbot = RetrievalQA.from_chain_type(
-#     llm=llm,
-#     retriever=retriever,
-#     chain_type="stuff",  
-# )
-
-chatbot = SQLDatabaseChain.from_llm(llm, db, memory=memory, verbose=True, prompt=few_shot_prompt)
 
 st.title("RAG Chatbot")
 input_text=st.text_input("What question do you have in mind?")
@@ -113,6 +111,10 @@ input_text=st.text_input("What question do you have in mind?")
 if input_text:
     container = st.container(border=True)
     try:
-        container.write(chatbot.invoke(input_text))
+        chatbot.database.run = MethodType(clean_and_run, chatbot.database)
+
+# 🚀 Run chatbot
+        response = chatbot.run(input_text)
+        container.write(response)
     except:
         container.write("Sorry, I am not able to answer this question.")
