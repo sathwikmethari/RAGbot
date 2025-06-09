@@ -15,8 +15,6 @@ from langchain_cohere import ChatCohere
 import streamlit as st
 from types import MethodType
 
-# class BaseCache(BaseModel):
-#     pass
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -114,6 +112,7 @@ if input_text:
         #and using MethodType to bind it properly to the chatbot.database 
         chatbot.database.run = MethodType(clean_and_run, chatbot.database)
         response = chatbot.run(input_text)
+        # print(type(response))
         container.write(response)
     except:
         container.write("Sorry, I am not able to answer this question.")
