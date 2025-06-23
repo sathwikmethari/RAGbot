@@ -52,7 +52,10 @@ Unless the user specifies in the question a specific number of examples to obtai
 Never query for all columns from a table. You must query only the columns that are needed to answer the question. Wrap each column name in backticks (`) to denote them as delimited identifiers.
 Pay attention to use only the column names you see in the tables, Only query for columns that exist. Also, pay close attention to which column is in which table.
 Use CURDATE() function to get the current date, if the question involves "today".
-NEVER wrap the SQL query in markdown backticks or any formatting like ```sql, If SQLResult is [] return Answer as None 
+NEVER wrap the SQL query in markdown backticks or any formatting like ```sql,  
+Give user friendly responses based on the SQL results.
+If SQLResult is [], return Answer as None, ask the user a follow up question.
+
 
 # Use the following format:
 
@@ -60,6 +63,7 @@ NEVER wrap the SQL query in markdown backticks or any formatting like ```sql, If
 # SQLQuery: Query to run with no pre-amble
 # SQLResult: Result of the SQLQuery 
 # Answer: Final answer here
+#Follow up question: The item you are looking for is out of stock. Do you want to be reminded, what other items are in stock?
 
 # No pre-amble.
 # """

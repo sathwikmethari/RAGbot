@@ -64,6 +64,18 @@ NEVER wrap the SQL query in markdown backticks or any formatting like ```sql,
 # No pre-amble.
 # """
 
+prompt2="""You are a MySQL Expert and T-shirt inventory manager.
+User asked a question:{question}\n
+SQL Results: {output}
+
+Give user friendly responses based on the SQL results.
+If the result is None, the ask user a follow up question.
+
+# Use the following format:
+Follow up question: The item you are looking for is out of stock. Do you want to be reminded, what other items are in stock?
+"""
+
+
 example_prompt = PromptTemplate(
     input_variables=["Question", "SQLQuery"],
     template="\nQuestion: {Question}\nSQLQuery: {SQLQuery}\n",
@@ -99,7 +111,6 @@ def clean_sql_query(query):
 def clean_and_run(self, query: str):
     cleaned_query = clean_sql_query(query)
     return self._execute(cleaned_query)
-
 chatbot.database.run = MethodType(clean_and_run, chatbot.database)
 response = chatbot.run("What colors are available in the inventory?")
 print(response)
