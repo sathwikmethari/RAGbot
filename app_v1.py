@@ -2,7 +2,8 @@ import os
 from utils import *
 from few_shots.few_shots_v1 import few_shots_list_of_dict
 from dotenv import load_dotenv
-load_dotenv()  # take environment variables from .env 
+load_dotenv()  # take environment variables from .env
+
 from langchain.prompts import FewShotPromptTemplate, PromptTemplate
 from langchain.memory import ConversationBufferWindowMemory
 from langchain_experimental.sql import SQLDatabaseChain
@@ -18,10 +19,11 @@ from types import MethodType
 import warnings
 warnings.filterwarnings("ignore")
 
-db_user = os.getenv("USER")
-db_password = os.getenv("PASSWORD")
-db_host = os.getenv("HOST")
-db_name = os.getenv("NAME")
+USER = os.getenv("SUPABASE_user")
+PASSWORD = os.getenv("SUPABASE_password")
+HOST = os.getenv("SUPABASE_host")
+PORT = os.getenv("SUPABASE_port")
+DBNAME = os.getenv("SUPABASE_dbname")
 
 os.environ["COHERE_API_KEY"]=os.getenv("COHERE_API_KEY") # Set the cohere api key
 os.environ["LANGCHAIN_TRACING_V2"]="true"                # Enable tracing
@@ -30,11 +32,13 @@ os.environ["LANGCHAIN_PROJECT"]=os.getenv("LANGCHAIN_PROJECT") # Set the project
 SQLDatabaseChain.model_rebuild()  # Rebuild the model before usage
 
 try:
-    db = SQLDatabase.from_uri(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}",sample_rows_in_table_info=5)
+    db = SQLDatabase.from_uri(f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}",sample_rows_in_table_info=5)
     print("Successfully connected to the database!")
 except:
     print("Failed to connect to the database. Please check your credentials.")
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+
+embeddings = HuggingFaceEmbeddings(model_name="all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
 
 to_vectorize = [" ".join(example.values()) for example in few_shots_list_of_dict]
 vectorstore = Chroma.from_texts(
@@ -44,7 +48,7 @@ vectorstore = Chroma.from_texts(
 # Example selector using semantic similarity
 example_selector = SemanticSimilarityExampleSelector(
     vectorstore=vectorstore,
-    k=5,
+    k=3,
 )
 # Your existing MySQL prompt
 mysql_prompt = """You are a MySQL expert and T-shirt inventory manager. Given an input question, first create a syntactically correct MySQL query to run, then look at the results of the query and return the answer to the input question.
@@ -92,8 +96,6 @@ def clean_and_run(self, query: str):
 
 # LLM and SQL chain setup
 llm = ChatCohere(model="command-a-03-2025")  # your model
-#retriever = vectorstore.as_retriever()       # your vector store (already assumed ready)
-# db = SQLDatabase(...)                      # assumed created somewhere above
 
 chatbot = SQLDatabaseChain.from_llm(
     llm=llm,
